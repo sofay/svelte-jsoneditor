@@ -49,6 +49,12 @@
           outline: none;
           resize: vertical; // prevent resizing horizontally
         }
+
+        div.jse-query {
+          flex: 1;
+          outline: none;
+          resize: vertical; // prevent resizing horizontally
+        }
       }
 
       .jse-data-contents {

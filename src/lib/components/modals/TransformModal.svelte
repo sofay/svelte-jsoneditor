@@ -16,6 +16,15 @@
   import AbsolutePopup from './popup/AbsolutePopup.svelte'
   import { createDebug } from '../../utils/debug'
   import TreeMode from '../modes/treemode/TreeMode.svelte'
+
+  import type monaco from 'monaco-editor';
+  import { onMount } from 'svelte';
+  import editorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker';
+  import jsonWorker from 'monaco-editor/esm/vs/language/json/json.worker?worker';
+  import cssWorker from 'monaco-editor/esm/vs/language/css/css.worker?worker';
+  import htmlWorker from 'monaco-editor/esm/vs/language/html/html.worker?worker';
+  import tsWorker from 'monaco-editor/esm/vs/language/typescript/ts.worker?worker';
+
   import type {
     Content,
     JSONParser,
@@ -26,6 +35,43 @@
     QueryLanguage
   } from '../../types'
   import { stripRootObject } from '$lib/utils/pathUtils'
+
+
+  let divEl: HTMLDivElement = null;
+  let editor: monaco.editor.IStandaloneCodeEditor;
+  let Monaco;
+
+  onMount(async () => {
+      // @ts-ignore
+      self.MonacoEnvironment = {
+          getWorker: function (_moduleId: any, label: string) {
+              if (label === 'json') {
+                  return new jsonWorker();
+              }
+              if (label === 'css' || label === 'scss' || label === 'less') {
+                  return new cssWorker();
+              }
+              if (label === 'html' || label === 'handlebars' || label === 'razor') {
+                  return new htmlWorker();
+              }
+              if (label === 'typescript' || label === 'javascript') {
+                  return new tsWorker();
+              }
+              return new editorWorker();
+          }
+      };
+
+      Monaco = await import('monaco-editor');
+      editor = Monaco.editor.create(divEl, {
+          value: query,
+          language: queryLanguageId == 'jmespath' ? 'plaintext' : 'javascript'
+      });
+
+      return () => {
+          editor.dispose();
+      };
+  });
+
 
   const debug = createDebug('jsoneditor:TransformModal')
 
@@ -72,6 +118,7 @@
   function getSelectedQueryLanguage(queryLanguageId: string): QueryLanguage {
     return queryLanguages.find((item) => item.id === queryLanguageId) || queryLanguages[0]
   }
+  console.log('shijin debug queryLanguageId', queryLanguageId)
 
   function updateQueryByWizard(newQueryOptions) {
     queryOptions = newQueryOptions
@@ -218,19 +265,20 @@
             {#if Array.isArray(selectedJson)}
               <TransformWizard {queryOptions} json={selectedJson} onChange={updateQueryByWizard} />
             {:else}
-              (Only available for arrays, not for objects)
+              (Only available for arrays, not for objects._shijin updated)
             {/if}
           {/if}
 
           <div class="jse-label">
             <div class="jse-label-inner">Query</div>
           </div>
-          <textarea
+          <div bind:this={divEl} class="jse-query" spellcheck="false" value={query} on:input={handleChangeQuery}/>
+          <!-- <textarea
             class="jse-query"
             spellcheck="false"
             value={query}
             on:input={handleChangeQuery}
-          />
+          /> -->
         </div>
         <div class="jse-data-contents" class:jse-hide-original-data={!showOriginal}>
           <div class="jse-original-data" class:jse-hide={!showOriginal}>
